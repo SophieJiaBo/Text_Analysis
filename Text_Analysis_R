@@ -2,7 +2,7 @@
 ```{r}
 library(tidyverse)# Load tidyverse
 library(ggplot2)# Load ggplot2
-queen_lyrics<-read.csv("/Users/bojia/Desktop/data/queen_lyrics.csv") #load data
+queen_lyrics<-read.csv("queen_lyrics.csv") #load data
 
 summary(queen_lyrics)#get summary of the dataset
 dim(queen_lyrics)#look at the dimensions of the dataset

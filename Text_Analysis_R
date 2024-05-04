@@ -1,0 +1,122 @@
+# Data Import
+```{r}
+library(tidyverse)# Load tidyverse
+library(ggplot2)# Load ggplot2
+queen_lyrics<-read.csv("/Users/bojia/Desktop/data/queen_lyrics.csv") #load data
+
+summary(queen_lyrics)#get summary of the dataset
+dim(queen_lyrics)#look at the dimensions of the dataset
+head(queen_lyrics)#look at the first several rows of the dataset
+```
+
+# Description
+
+```{r}
+lyrics <- tm::Corpus(tm::VectorSource(queen_lyrics$lyric)) #create a Corpus for the lyrics
+lyrics
+```
+
+
+```{r}
+dtm <- tm::DocumentTermMatrix(lyrics, #create a document term matrix based on the lyrics
+                              control = list(stopwords = TRUE, #remove stop words
+                                             tolower = TRUE, #turn the words to lower cases
+                                             removeNumbers = TRUE, #remove numbers in the lyrics
+                                             removePunctuation = TRUE, #remove punctuations
+                                             stemming = TRUE)) #stem each term
+dtm
+```
+
+```{r}
+library(wordcloud) #load the library
+freq <- colSums(as.matrix(dtm)) #calculate the frequencies of each words
+ord <- order(freq) #make the words shown in order
+freq[tail(ord)] #see the most frequent words
+freq[head(ord)] #see the least frequent words
+wordcloud::wordcloud(names(freq), freq, max.words=100) #make a wordcloud to visualize it
+```
+
+#Advanced insight- songs' sentiments
+```{r}
+queen_lyrics <- queen_lyrics|>
+  tidyr::unnest(lyric) |> #unnest the variable lyric
+  dplyr::select(track_title, lyric) #select the columns used later
+
+head(queen_lyrics) #show result
+```
+
+```{r}
+library(tidytext) #load the library
+
+queen_lyrics <- queen_lyrics |>
+  tidytext::unnest_tokens(words, lyric)|> #break the lyrics into words
+  filter(!words %in% stop_words$word) #remove the stop words
+
+head(queen_lyrics) #show result
+```
+
+```{r}
+queen_lyrics |> #further look at the frequently used words
+  dplyr::count(words, sort = TRUE) |> #count the frequency
+  dplyr::filter(n >= 10) |> #disaplay words with frequency > 10
+  dplyr::mutate(words = reorder(words, n)) |> #order the words
+  ggplot(aes(x = n, y = words, fill = words)) + #create a figure about it
+  geom_col() + #add columns
+  theme_classic() +
+  labs(x = "Frequency", y = "Words", title = "Most Frequently Used Words in Queen's songs") #add x-axis, y-axis, and title
+```
+
+```{r}
+#first sentiment analysis by using nrc dictionary
+
+nrc_sentiments <- tidytext::get_sentiments("nrc") #get the list of sentiments
+
+nrc_words <- queen_lyrics |>
+  dplyr::inner_join(nrc_sentiments,by = c("words" = "word")) #join the sentiments to the dataset
+
+nrc_counts <- nrc_words |>
+  dplyr::group_by(track_title, sentiment) |> #grouping data together
+  dplyr::count() #calculate the frequency 
+
+head(nrc_counts) #show the sentiments fore each song
+head(nrc_words) #show the specific words connected with sentiments
+```
+
+```{r}
+#sentiment plot by nrc dictionary
+
+nrc_counts |>
+  ggplot(aes(x = n, y = sentiment, fill = sentiment)) + #create a figure about the sentiments
+  facet_wrap(~track_title) + #create plots for each songs
+  geom_histogram(stat = "identity") + #create a histogram
+  theme_classic() + #determine the plot theme
+  labs(x = "Frequency", y = "Sentiment", title = "Queen's Songs Sentiment",subtitle="nrc Dictionary")+ #label x-axis, y-axis, and titles
+  scale_y_discrete(limits = rev) #reverse the order of y-axis to make it more clear
+```
+
+```{r}
+#second sentiment analysis by using bing dictionary
+get_sentiments("bing")
+bing_sentiments <- tidytext::get_sentiments("bing") #get the list of sentiments
+
+bing_words <- queen_lyrics |>
+  dplyr::inner_join(bing_sentiments,by = c("words" = "word")) #join the sentiments to the dataset
+
+bing_counts <- bing_words |>
+  dplyr::group_by(track_title, sentiment) |> #grouping data together
+  dplyr::count() #calculate the frequency 
+
+head(bing_counts) #show the sentiments fore each song
+head(bing_words) #show the specific words connected with sentiments
+```
+
+```{r}
+#sentiment plot by bing dictionary
+bing_counts |>
+  ggplot(aes(x = n, y = sentiment, fill = sentiment)) + #create a figure about the sentiments
+  facet_wrap(~track_title) + #create plots for each songs
+  geom_histogram(stat = "identity") + #create a histogram
+  theme_classic() + #determine the plot theme
+  labs(x = "Frequency", y = "Sentiment", title = "Queen's Songs Sentiment",subtitle="Bing Dictionary")
+  #label x-axis, y-axis, and titles
+```
